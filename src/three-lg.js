@@ -26,6 +26,7 @@ VIEWSYNC.Connection = function(appname, master) {
   });
 
   viewsync.on('sync pov', function(pov) {
+    var a;
     console.debug('viewsync recv pov:', pov);
     if (master) {
         switch (pov.type) { 
@@ -41,14 +42,13 @@ VIEWSYNC.Connection = function(appname, master) {
                 THREELG.initialScene = eval("(" + pov.initialScene + ")");
                 THREELG.render = eval("(" + pov.render + ")");
                 if (typeof THREELG.initialScene === 'function') {
-                    THREELG.initialSceneStuff = THREELG.initialScene();
+                    THREELG.initialSceneStuff = THREELG.initialScene(master);
                 }
                 break;
             case 'render':
                 // pov.prerenderArgs comes from the prerenderMaster function
-                THREELG.render(THREELG.initialSceneStuff,
-                    THREELG.prerenderSlave(pov.prerenderArgs, THREELG.initialSceneStuff)
-                );
+                if (THREELG.prerenderSlave !== undefined) { a = THREELG.prerenderSlave(pov.prerenderArgs, THREELG.initialSceneStuff); }
+                THREELG.render(THREELG.initialSceneStuff, a);
                 break;
         }
     }
@@ -98,9 +98,10 @@ THREE.WebGLRenderer = function() {
     wglr.__old_render = wglr.render;
     wglr.render = function( scene, camera, renderTarget, forceClear ) {
         var that = this;
-        console.log("Here's my THREE.WebGLRenderer.render wrapper");
+        var a;
+
         if (THREELG.master) {
-            a = THREELG.prerenderMaster();
+            if (THREELG.prerenderMaster !== undefined) { a = THREELG.prerenderMaster(); }
             THREELG.viewsync.sendPov({ 'type': 'render', 'prerenderArgs': a });
         }
         return that.__old_render( scene, camera, renderTarget, forceClear );
